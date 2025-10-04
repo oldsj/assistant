@@ -33,6 +33,11 @@ SHOW_TIMING_MATH = False
 
 app = FastAPI()
 
+@app.get("/health")
+async def health():
+    """Health check endpoint."""
+    return {"status": "ok"}
+
 if not OPENAI_API_KEY:
     raise ValueError('Missing the OpenAI API key. Please set it in the .env file.')
 
