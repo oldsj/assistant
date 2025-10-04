@@ -63,6 +63,8 @@ This application uses **three layers of security** to protect against unauthoriz
 - Twilio account with a voice-capable phone number
 - OpenAI API key with Realtime API access
 - cloudflared for local development tunneling
+- Docker (optional, for containerized deployment)
+- [Fly.io account](https://fly.io) (optional, for production deployment)
 
 ## Setup
 
@@ -127,11 +129,97 @@ make tunnel
 
 ## Run
 
+### Local Development
+
 ```bash
 uv run python main.py
 ```
 
 Call your Twilio number to talk with the assistant.
+
+## Deployment
+
+### Docker
+
+**Build and run locally:**
+```bash
+docker compose up
+```
+
+**Run with cloudflared tunnel (dev profile):**
+```bash
+docker compose --profile dev up
+```
+
+### Fly.io
+
+**Initial setup:**
+```bash
+# Install flyctl
+brew install flyctl
+
+# Authenticate
+fly auth login
+
+# Launch app (generates fly.toml and creates app, but doesn't deploy)
+fly launch --no-deploy
+```
+
+**Set secrets:**
+```bash
+fly secrets set OPENAI_API_KEY=your_key_here
+fly secrets set TWILIO_AUTH_TOKEN=your_token_here
+```
+
+Non-secret environment variables (VOICE, TEMPERATURE, SYSTEM_MESSAGE) are configured in `fly.toml`.
+
+**Deploy:**
+```bash
+fly deploy
+```
+
+**Get your app URL:**
+```bash
+fly status
+```
+
+Your webhook URL will be: `https://[your-app-name].fly.dev/incoming-call`
+
+Use this URL as your `WEBHOOK_URL` in the Twilio Function.
+
+**Scale to single machine (optional):**
+```bash
+fly scale count 1 -y
+```
+
+**Custom domain setup (optional):**
+
+1. Get your Fly IP addresses:
+```bash
+fly ips list
+```
+
+2. In your DNS provider (e.g., Cloudflare), add DNS records for your custom domain:
+   - **A record**: Point to the IPv4 address shown in `fly ips list`
+   - **AAAA record**: Point to the IPv6 address shown in `fly ips list`
+
+3. Add the custom domain to Fly (triggers Let's Encrypt certificate):
+```bash
+fly certs add your-domain.com
+```
+
+4. Check certificate status:
+```bash
+fly certs show your-domain.com
+```
+
+5. Once issued, update your Twilio Function's `WEBHOOK_URL` to use your custom domain:
+   - Example: `https://your-domain.com/incoming-call`
+
+**View logs:**
+```bash
+fly logs
+```
 
 ## Features
 

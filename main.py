@@ -68,7 +68,16 @@ def cleanup_expired_tokens():
 async def handle_incoming_call(request: Request):
     """Handle incoming call and return TwiML response to connect to Media Stream."""
     # Verify Twilio signature
-    url = str(request.url)
+    # Use X-Forwarded-Proto and Host headers to construct the correct URL for validation
+    # This handles both direct requests (local dev) and proxied requests (Fly.io)
+    scheme = request.headers.get('X-Forwarded-Proto', request.url.scheme)
+    host = request.headers.get('Host', request.url.netloc)
+    path = str(request.url.path)
+    query = str(request.url.query)
+    url = f"{scheme}://{host}{path}"
+    if query:
+        url += f"?{query}"
+
     signature = request.headers.get('X-Twilio-Signature', '')
 
     # Get form data for validation
@@ -76,6 +85,8 @@ async def handle_incoming_call(request: Request):
     params = dict(form_data)
 
     if not validator.validate(url, params, signature):
+        print(f"Signature validation failed. URL: {url}")
+        print(f"Signature: {signature}")
         raise HTTPException(status_code=403, detail="Invalid Twilio signature")
 
     # Clean up expired tokens periodically

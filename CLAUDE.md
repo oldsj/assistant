@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Important
+
+**This is a PUBLIC repository.** Never include PII (personally identifiable information) in any files:
+- No real IP addresses, phone numbers, or domain names in examples
+- No API keys, tokens, or credentials
+- Use example/placeholder values only (e.g., `+15551234567`, `your-domain.com`, → reference to command output)
+
 ## Project Overview
 
 This is a personal voice assistant that bridges Twilio Voice and OpenAI's Realtime API for phone-based AI conversations. The architecture uses a FastAPI server as a WebSocket relay between Twilio's Media Streams and OpenAI's Realtime API.
@@ -18,6 +25,19 @@ make dev
 ```bash
 make tunnel-quick    # Quick temporary tunnel with random URL
 make tunnel          # Named tunnel with stable domain (requires setup)
+```
+
+**Docker:**
+```bash
+docker compose up                  # Run without tunnel
+docker compose --profile dev up    # Run with cloudflared tunnel
+```
+
+**Fly.io deployment:**
+```bash
+fly deploy           # Deploy to Fly.io
+fly logs             # View logs
+fly status           # Get app URL and status
 ```
 
 ## Architecture

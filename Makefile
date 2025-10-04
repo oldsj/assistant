@@ -1,4 +1,4 @@
-.PHONY: tunnel tunnel-quick dev
+.PHONY: tunnel tunnel-quick dev deploy
 
 # Quick temporary tunnel (random URL)
 tunnel-quick:
@@ -11,3 +11,6 @@ tunnel:
 # Run the application
 dev:
 	uv run python main.py
+
+deploy:
+	fly deploy
