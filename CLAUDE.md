@@ -113,3 +113,76 @@ This sends an initial user message prompting the AI to greet the caller.
 ## Audio Format
 
 Both Twilio and OpenAI use μ-law (PCMU) encoding at 8kHz for compatibility without transcoding.
+
+## Fly.io Deployment & MCP Integration
+
+### Main Application Deployment
+
+The main FastAPI application is deployed to Fly.io with a blue-green deployment strategy for zero-downtime updates:
+
+```bash
+make deploy          # Deploys both MCP and main app
+fly logs             # View application logs
+fly status           # Check deployment status
+```
+
+**Important Fly.io Configuration:**
+- Uses `blue-green` deployment strategy (`fly.toml:12`)
+- Health checks ensure new machines are ready before traffic switches (`fly.toml:22-27`)
+- Secrets are managed via `fly secrets set` (never committed to git)
+
+### MCP Server Integration (Todoist)
+
+The assistant integrates with Todoist via an MCP (Model Context Protocol) server running on Fly.io's private network using **Flycast**.
+
+**Setup:**
+```bash
+make launch-mcp      # Deploy MCP server with Flycast networking
+make logs-mcp        # View MCP server logs
+```
+
+**Flycast Networking:**
+- Flycast provides private networking between Fly.io apps within the same organization
+- Routes requests through Fly Proxy (not direct Machine-to-Machine)
+- Enables auto-stop/autostart based on network requests
+- No port needed in URL - Fly Proxy routes to `internal_port` automatically
+
+**Key Flycast Requirements:**
+1. Allocate a Flycast private IPv6: `fly ips allocate-v6 --private -a <app-name>`
+2. Remove `force_https = true` from `http_service` in `fly.toml` (Flycast is HTTP-only)
+3. Access via `http://<app-name>.flycast` (no port number)
+4. Both apps must be in the same Fly.io organization
+
+**MCP Server Configuration:**
+- Command: `npx -y @doist/todoist-ai`
+- Memory: 256MB (minimal footprint)
+- Auto-suspend when idle to reduce costs
+- Requires `TODOIST_API_KEY` secret (set from `.env` during launch)
+
+**Connection Flow:**
+1. OpenAI Realtime API session initializes with MCP tools configured (`main.py:337-344`)
+2. Main app connects to MCP server via Flycast: `http://todoist-mcp.flycast`
+3. Fly Proxy routes to MCP server's `internal_port: 8080`
+4. MCP server auto-starts on first request if suspended
+
+**Testing MCP Connectivity:**
+- Cannot test with simple HTTP requests (MCP expects specific protocol)
+- Connection validated when OpenAI makes MCP tool calls during conversations
+- Check logs: `make logs-mcp` to see MCP server activity
+
+**Common Issues:**
+- **No Flycast IP:** Run `fly ips allocate-v6 --private -a todoist-mcp`
+- **Connection reset:** Likely missing Flycast IP or wrong URL format
+- **Timeout:** MCP server may be starting (first request after suspend takes 2-5 seconds)
+
+### Makefile Targets
+
+```bash
+make dev             # Run locally
+make deploy          # Deploy both MCP and main app
+make deploy-mcp      # Deploy only MCP server (via fly.toml)
+make launch-mcp      # Launch MCP server using fly mcp launch
+make logs            # View logs for both apps
+make logs-mcp        # View MCP server logs only
+make tunnel-quick    # Start development tunnel
+```
