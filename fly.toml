@@ -9,7 +9,7 @@ primary_region = 'iad'
 [build]
 
 [deploy]
-  strategy = "bluegreen"
+  strategy = "immediate"
 
 [http_service]
   internal_port = 5050
@@ -35,8 +35,11 @@ primary_region = 'iad'
   PORT = "5050"
   VOICE = "alloy"
   TEMPERATURE = "0.8"
-  SYSTEM_MESSAGE = "You are a helpful AI assistant. Be concise and direct in your responses. Keep answers brief unless asked for more detail."
+  ASSISTANT_INSTRUCTIONS = "You are a helpful and friendly AI voice assistant. Be conversational and natural. Keep responses concise and to the point. Speak clearly and avoid overly long explanations unless asked."
+  TODOIST_INSTRUCTIONS = "You have access to Todoist for task management. When users mention tasks, to-dos, reminders, or ask what they need to do, ALWAYS use the available Todoist tools to create, read, update, or complete tasks. Never pretend to add tasks - actually call the tools."
+  TODOIST_MCP_URL = "https://mcp.zapier.com/api/mcp/mcp"
 
-# Secrets (set via: fly secrets set KEY=value)
+# Secrets (set via: fly secrets set KEY=value -a assistant-summer-sun-6786)
 # - OPENAI_API_KEY
 # - TWILIO_AUTH_TOKEN
+# - TODOIST_MCP_PASSWORD

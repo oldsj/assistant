@@ -17,17 +17,21 @@ load_dotenv()
 # Configuration
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
+TODOIST_MCP_URL = os.getenv('TODOIST_MCP_URL')
+TODOIST_MCP_PASSWORD = os.getenv('TODOIST_MCP_PASSWORD')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 ALLOWED_NUMBERS = os.getenv('ALLOWED_NUMBERS', '').split(',') if os.getenv('ALLOWED_NUMBERS') else []
 PORT = int(os.getenv('PORT', 5050))
 TEMPERATURE = float(os.getenv('TEMPERATURE', 0.8))
-SYSTEM_MESSAGE = os.getenv('SYSTEM_MESSAGE')
+ASSISTANT_INSTRUCTIONS = os.getenv('ASSISTANT_INSTRUCTIONS')
+TODOIST_INSTRUCTIONS = os.getenv('TODOIST_INSTRUCTIONS')
 VOICE = os.getenv('VOICE')
 LOG_EVENT_TYPES = [
     'error', 'response.content.done', 'rate_limits.updated',
     'response.done', 'input_audio_buffer.committed',
     'input_audio_buffer.speech_stopped', 'input_audio_buffer.speech_started',
-    'session.created', 'session.updated'
+    'session.created', 'session.updated', 'response.function_call_arguments.delta',
+    'response.function_call_arguments.done'
 ]
 SHOW_TIMING_MATH = False
 
@@ -44,8 +48,17 @@ if not OPENAI_API_KEY:
 if not TWILIO_AUTH_TOKEN:
     raise ValueError('Missing the Twilio Auth Token. Please set it in the .env file.')
 
-if not SYSTEM_MESSAGE:
-    raise ValueError('Missing SYSTEM_MESSAGE. Please set it in the .env file.')
+if not TODOIST_MCP_URL:
+    raise ValueError('Missing TODOIST_MCP_URL. Please set it in the .env file.')
+
+if not TODOIST_MCP_PASSWORD:
+    raise ValueError('Missing TODOIST_MCP_PASSWORD. Please set it in the .env file.')
+
+if not ASSISTANT_INSTRUCTIONS:
+    raise ValueError('Missing ASSISTANT_INSTRUCTIONS. Please set it in the .env file.')
+
+if not TODOIST_INSTRUCTIONS:
+    raise ValueError('Missing TODOIST_INSTRUCTIONS. Please set it in the .env file.')
 
 if not VOICE:
     raise ValueError('Missing VOICE. Please set it in the .env file.')
@@ -315,27 +328,54 @@ async def send_initial_conversation_item(openai_ws):
 
 async def initialize_session(openai_ws):
     """Control initial session with OpenAI."""
+    # Combine instructions: general assistant behavior + Todoist-specific tool usage
+    combined_instructions = f"{ASSISTANT_INSTRUCTIONS}\n\n{TODOIST_INSTRUCTIONS}"
+
+    session_config = {
+        "type": "realtime",
+        "model": "gpt-realtime",
+        "output_modalities": ["audio"],
+        "audio": {
+            "input": {
+                "format": {"type": "audio/pcmu"},
+                "turn_detection": {"type": "server_vad"}
+            },
+            "output": {
+                "format": {"type": "audio/pcmu"},
+                "voice": VOICE
+            }
+        },
+        "instructions": combined_instructions,
+        "tools": [
+            {
+                "type": "mcp",
+                "server_label": "todoist",
+                "server_url": TODOIST_MCP_URL,
+                "headers": {
+                    "Authorization": f"Bearer {TODOIST_MCP_PASSWORD}"
+                },
+                "require_approval": "never"
+            }
+        ]
+    }
+
     session_update = {
         "type": "session.update",
-        "session": {
-            "type": "realtime",
-            "model": "gpt-realtime",
-            "output_modalities": ["audio"],
-            "audio": {
-                "input": {
-                    "format": {"type": "audio/pcmu"},
-                    "turn_detection": {"type": "server_vad"}
-                },
-                "output": {
-                    "format": {"type": "audio/pcmu"},
-                    "voice": VOICE
-                }
-            },
-            "instructions": SYSTEM_MESSAGE,
-        }
+        "session": session_config
     }
     print('Sending session update:', json.dumps(session_update))
     await openai_ws.send(json.dumps(session_update))
+
+    # Wait for and log the session.updated response to see what tools are registered
+    response = await openai_ws.recv()
+    response_data = json.loads(response)
+    print(f"Session update response: {json.dumps(response_data, indent=2)}")
+
+    if response_data.get('type') == 'session.updated':
+        tools = response_data.get('session', {}).get('tools', [])
+        print(f"Registered tools count: {len(tools)}")
+        for tool in tools:
+            print(f"Tool: {tool.get('type')} - {tool.get('server_label')} - allowed_tools: {tool.get('allowed_tools')}")
 
     # Have the AI speak first
     await send_initial_conversation_item(openai_ws)

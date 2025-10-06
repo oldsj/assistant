@@ -77,6 +77,8 @@ cp .env.example .env
 Edit `.env` and configure:
 - `OPENAI_API_KEY` - Your OpenAI API key
 - `TWILIO_AUTH_TOKEN` - Your Twilio Auth Token (found in [Twilio Console](https://console.twilio.com/))
+- `TODOIST_MCP_URL` - MCP server URL (e.g., `http://your-mcp-app-name.flycast`)
+- `TODOIST_MCP_PASSWORD` - MCP password (sent as a bearer token to the Fly MCP wrapper)
 - `SYSTEM_MESSAGE` - AI assistant behavior instructions
 - `VOICE` - OpenAI voice name (e.g., `alloy`, `shimmer`, `nova`)
 - `PORT` - Server port (default: 5050)
@@ -165,13 +167,20 @@ fly auth login
 fly launch --no-deploy
 ```
 
-**Set secrets:**
+**Configure environment:**
+
+1. Edit `fly.toml` and update `TODOIST_MCP_URL` with your actual MCP app name:
+```toml
+TODOIST_MCP_URL = "http://<your-mcp-app-name>.flycast"
+```
+
+2. Set secrets:
 ```bash
 fly secrets set OPENAI_API_KEY=your_key_here
 fly secrets set TWILIO_AUTH_TOKEN=your_token_here
 ```
 
-Non-secret environment variables (VOICE, TEMPERATURE, SYSTEM_MESSAGE) are configured in `fly.toml`.
+Non-secret environment variables (VOICE, TEMPERATURE, SYSTEM_MESSAGE, TODOIST_MCP_URL) are configured in `fly.toml`.
 
 **Deploy:**
 ```bash
@@ -221,9 +230,88 @@ fly certs show your-domain.com
 fly logs
 ```
 
+## MCP Integration (Todoist)
+
+This assistant integrates with Todoist via OpenAI's native MCP support, allowing you to manage tasks through voice commands.
+
+### MCP Server Deployment
+
+The Todoist MCP server is in `mcp/todoist/` and deployed to Fly.io with private Flycast networking.
+
+**Directory Structure:**
+```
+assistant/
+├── mcp/
+│   └── todoist/
+│       └── fly.toml
+├── main.py
+└── fly.toml
+```
+
+**Deploy MCP Server:**
+```bash
+cd mcp/todoist
+fly launch --flycast --image flyio/mcp --no-deploy --name <your-mcp-app-name> --region <your-region>
+# Edit generated fly.toml to add process command under [processes]
+fly deploy
+```
+
+**Set Todoist API Token:**
+```bash
+# Get token from https://todoist.com/prefs/integrations
+cd mcp/todoist
+fly secrets set TODOIST_API_TOKEN=your_token_here
+```
+
+**Secure with Private Networking:**
+```bash
+# Allocate private Flycast IP
+fly ips allocate-v6 --private
+
+# Remove public IPs for security
+fly ips list  # Note the public IPs
+fly ips release <public-ipv6>
+fly ips release <public-ipv4>
+```
+
+After removing public IPs, the MCP server is only accessible via `<app-name>.flycast` from other apps in your organization.
+
+**Test with MCP Inspector:**
+```bash
+fly mcp inspect --server todoist
+```
+
+### Configuration
+
+The MCP server is configured in the OpenAI Realtime API session using the `tools` array:
+
+```python
+{
+    "type": "mcp",
+    "server_label": "todoist",
+    "server_url": "http://<your-mcp-app-name>.flycast",
+    # No authorization needed - server uses TODOIST_API_TOKEN secret
+    # Note: Use http:// (not https://) for Flycast internal networking
+    "require_approval": "never"
+}
+```
+
+**Get Todoist API Token:**
+1. Go to [Todoist Settings > Integrations](https://todoist.com/prefs/integrations)
+2. Scroll to "API token" section
+3. Copy your API token
+
+### Available Voice Commands
+
+Once configured, you can use natural language to manage tasks:
+- "Add buy milk to my todo list"
+- "What tasks do I have today?"
+- "Mark task as complete"
+- "What's due tomorrow?"
+
 ## Features
 
 - Real-time voice conversation with OpenAI
 - Natural interrupt handling and AI preemption
 - Bidirectional audio streaming between Twilio and OpenAI
-
+- Task management via Todoist MCP integration
