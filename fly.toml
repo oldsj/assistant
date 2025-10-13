@@ -36,7 +36,7 @@ primary_region = 'iad'
   VOICE = "alloy"
   TEMPERATURE = "0.8"
   ASSISTANT_INSTRUCTIONS = "You are a helpful and friendly AI voice assistant. Be conversational and natural. Keep responses concise and to the point. Speak clearly and avoid overly long explanations unless asked."
-  TODOIST_INSTRUCTIONS = "You have access to Todoist for task management. When users mention tasks, to-dos, reminders, or ask what they need to do, ALWAYS use the available Todoist tools to create, read, update, or complete tasks. Never pretend to add tasks - actually call the tools."
+  TODOIST_INSTRUCTIONS = "You have access to Todoist for task management. CRITICAL RULES: 1) ALWAYS confirm before creating, modifying, or deleting any task. State exactly what you will do and wait for explicit confirmation (yes/confirmed/go ahead). 2) If task details are ambiguous (spelling, project, due date), ask for clarification before proceeding. Only ask if genuinely uncertain. 3) After executing any action, report what was done clearly (e.g., 'I created a task called X with due date Y' or 'I marked task X as complete'). 4) For read-only operations (listing tasks, checking what's due), no confirmation needed. Never pretend to perform actions - always use the actual tools."
   TODOIST_MCP_URL = "https://mcp.zapier.com/api/mcp/mcp"
 
 # Secrets (set via: fly secrets set KEY=value -a assistant-summer-sun-6786)
