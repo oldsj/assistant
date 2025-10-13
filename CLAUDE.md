@@ -90,26 +90,14 @@ fly status           # Get app URL and status
 Environment variables are loaded from `.env` (not committed):
 - `OPENAI_API_KEY` - Required for Realtime API access
 - `TWILIO_AUTH_TOKEN` - Required for signature validation
-- `ASSISTANT_INSTRUCTIONS` - General assistant personality and behavior
-- `TODOIST_INSTRUCTIONS` - Todoist-specific tool usage instructions (combined with assistant instructions)
-- `TODOIST_MCP_URL` - URL of the Todoist MCP server (e.g., `https://todoist-mcp.fly.dev`)
-- `TODOIST_MCP_PASSWORD` - Password for MCP server authentication
+- `ASSISTANT_INSTRUCTIONS` - Assistant personality, behavior, and tool usage instructions
+- `ZAPIER_MCP_URL` - URL of the Zapier MCP server (e.g., `https://mcp.zapier.com/api/mcp/mcp`)
+- `ZAPIER_MCP_PASSWORD` - API key for Zapier MCP authentication (base64 encoded)
 - `VOICE` - OpenAI voice (alloy, shimmer, nova, etc.)
 - `PORT` - Server port (default: 5050)
 - `TEMPERATURE` - AI temperature (default: 0.8)
 
 Note: `WEBHOOK_URL` and `ALLOWED_NUMBERS` are **only** used in the Twilio Function, not in the FastAPI application.
-
-### Instruction Separation
-
-The assistant uses two separate instruction sets that are combined at runtime:
-1. **`ASSISTANT_INSTRUCTIONS`**: General personality, tone, and behavior
-2. **`TODOIST_INSTRUCTIONS`**: Specific instructions for when and how to use Todoist tools
-
-This separation allows you to:
-- Update the assistant's personality without affecting tool behavior
-- Modify tool instructions without changing the general behavior
-- Easily add more tool-specific instructions in the future
 
 ## AI-First Greeting
 
@@ -141,44 +129,25 @@ fly status           # Check deployment status
 - Health checks ensure new machines are ready before traffic switches (`fly.toml:22-27`)
 - Secrets are managed via `fly secrets set` (never committed to git)
 
-### MCP Server Integration (Todoist)
+### MCP Server Integration (Zapier)
 
-The assistant integrates with Todoist via an MCP (Model Context Protocol) server running on Fly.io as a **public HTTPS endpoint** with password authentication.
+The assistant integrates with Zapier via an MCP (Model Context Protocol) server. Zapier connects to multiple services including:
+- **Todoist**: Task management and reminders
+- **Gmail**: Email search and management
 
-**Setup:**
-```bash
-make launch-mcp      # Deploy MCP server with password auth & Claude Desktop config
-make logs-mcp        # View MCP server logs
-```
-
-**Password Authentication:**
-- Uses password-based authentication for MCP server access
-- Password is set via `TODOIST_MCP_PASSWORD` environment variable in `.env`
-- Automatically added to Claude Desktop configuration with `--claude` flag
-- Provides secure access to the public endpoint
-
-**MCP Server Configuration:**
-- Command: `npx -y @doist/todoist-ai`
-- Memory: 256MB (minimal footprint)
-- Auto-suspend when idle to reduce costs
-- Requires `TODOIST_API_KEY` secret (set from `.env` during launch)
-- Public HTTPS endpoint: `https://todoist-mcp.fly.dev`
+**Zapier MCP Setup:**
+1. Get your API key from: https://zapier.com/app/developer/mcp
+2. Set `ZAPIER_MCP_URL=https://mcp.zapier.com/api/mcp/mcp` in `.env`
+3. Set `ZAPIER_MCP_PASSWORD=your_zapier_api_key_base64` in `.env`
 
 **Connection Flow:**
-1. OpenAI Realtime API session initializes with MCP tools configured (`main.py:337-344`)
-2. Main app connects to MCP server via HTTPS: `https://todoist-mcp.fly.dev`
-3. Password authentication is handled by MCP protocol
-4. MCP server auto-starts on first request if suspended
-
-**Testing MCP Connectivity:**
-- Cannot test with simple HTTP requests (MCP expects specific protocol)
-- Connection validated when OpenAI makes MCP tool calls during conversations
-- Check logs: `make logs-mcp` to see MCP server activity
+1. OpenAI Realtime API session initializes with MCP tools configured (`main.py:342-351`)
+2. Main app connects to Zapier MCP server via HTTPS
+3. API key authentication is handled by MCP protocol
+4. Zapier routes tool calls to configured integrations (Todoist, Gmail, etc.)
 
 **Common Issues:**
-- **401 Unauthorized:** Missing or invalid password in `TODOIST_MCP_PASSWORD`
-- **Timeout:** MCP server may be starting (first request after suspend takes 2-5 seconds)
-- **Not in Claude Desktop:** Verify `~/Library/Application Support/Claude/claude_desktop_config.json` has the MCP server entry
+- **401 Unauthorized:** Missing or invalid API key in `ZAPIER_MCP_PASSWORD`
 - **Tools not being called:** Check logs for `allowed_tools` field in session.updated event. If `None`, the MCP server may not be exposing tools properly to the Realtime API.
 
 ### Debugging MCP Tool Calls
@@ -188,18 +157,13 @@ The application includes enhanced logging to debug MCP tool discovery:
 1. **Check session configuration:** After deployment, check logs for:
    ```
    Registered tools count: X
-   Tool: mcp - todoist - allowed_tools: [...]
+   Tool: mcp - zapier - allowed_tools: [...]
    ```
 
 2. **Look for tool call events:** The logs will show if OpenAI is attempting to call tools:
    - `response.function_call_arguments.delta` - Function call in progress
    - `response.function_call_arguments.done` - Function call completed
    - If you see `output_text` with JSON instead, the AI is simulating tool calls rather than making real ones
-
-3. **Verify MCP server health:**
-   ```bash
-   make logs-mcp  # Check if MCP server is receiving requests
-   ```
 
 **Known Limitation:** OpenAI's Realtime API MCP support may be experimental. If tools aren't being called properly, consider using explicit function definitions instead of MCP (see Alternative Approaches below).
 
@@ -208,10 +172,6 @@ The application includes enhanced logging to debug MCP tool discovery:
 ```bash
 make dev             # Run locally
 make deploy          # Deploy main app to Fly.io
-make launch-mcp      # Launch MCP server using fly mcp launch
-make inspect-mcp     # Open MCP inspector to test the server
-make logs            # View logs for both apps
-make logs-mcp        # View MCP server logs only
 make tunnel-quick    # Start development tunnel
 ```
 
@@ -219,36 +179,4 @@ make tunnel-quick    # Start development tunnel
 
 ### Using Explicit Function Definitions Instead of MCP
 
-If MCP integration isn't working with the Realtime API, you can define Todoist functions explicitly:
-
-```python
-"tools": [
-    {
-        "type": "function",
-        "name": "create_task",
-        "description": "Create a new task in Todoist",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "content": {"type": "string", "description": "Task content"},
-                "due_string": {"type": "string", "description": "Due date in natural language (e.g., 'today', 'tomorrow')"},
-                "project_id": {"type": "string", "description": "Project ID (optional)"}
-            },
-            "required": ["content"]
-        }
-    },
-    {
-        "type": "function",
-        "name": "get_tasks",
-        "description": "Get tasks from Todoist",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "project_id": {"type": "string", "description": "Filter by project ID (optional)"}
-            }
-        }
-    }
-]
-```
-
-Then implement a handler to forward function calls to the MCP server manually. This gives you full control over the integration and ensures the AI can actually invoke the tools.
+If MCP integration isn't working with the Realtime API, you can define functions explicitly and implement handlers to forward calls to Zapier or directly to service APIs. This gives you full control over the integration and ensures the AI can actually invoke the tools.

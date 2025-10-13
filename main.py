@@ -17,14 +17,13 @@ load_dotenv()
 # Configuration
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
-TODOIST_MCP_URL = os.getenv('TODOIST_MCP_URL')
-TODOIST_MCP_PASSWORD = os.getenv('TODOIST_MCP_PASSWORD')
+ZAPIER_MCP_URL = os.getenv('ZAPIER_MCP_URL')
+ZAPIER_MCP_PASSWORD = os.getenv('ZAPIER_MCP_PASSWORD')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 ALLOWED_NUMBERS = os.getenv('ALLOWED_NUMBERS', '').split(',') if os.getenv('ALLOWED_NUMBERS') else []
 PORT = int(os.getenv('PORT', 5050))
 TEMPERATURE = float(os.getenv('TEMPERATURE', 0.8))
 ASSISTANT_INSTRUCTIONS = os.getenv('ASSISTANT_INSTRUCTIONS')
-TODOIST_INSTRUCTIONS = os.getenv('TODOIST_INSTRUCTIONS')
 VOICE = os.getenv('VOICE')
 LOG_EVENT_TYPES = [
     'error', 'response.content.done', 'rate_limits.updated',
@@ -48,17 +47,14 @@ if not OPENAI_API_KEY:
 if not TWILIO_AUTH_TOKEN:
     raise ValueError('Missing the Twilio Auth Token. Please set it in the .env file.')
 
-if not TODOIST_MCP_URL:
-    raise ValueError('Missing TODOIST_MCP_URL. Please set it in the .env file.')
+if not ZAPIER_MCP_URL:
+    raise ValueError('Missing ZAPIER_MCP_URL. Please set it in the .env file.')
 
-if not TODOIST_MCP_PASSWORD:
-    raise ValueError('Missing TODOIST_MCP_PASSWORD. Please set it in the .env file.')
+if not ZAPIER_MCP_PASSWORD:
+    raise ValueError('Missing ZAPIER_MCP_PASSWORD. Please set it in the .env file.')
 
 if not ASSISTANT_INSTRUCTIONS:
     raise ValueError('Missing ASSISTANT_INSTRUCTIONS. Please set it in the .env file.')
-
-if not TODOIST_INSTRUCTIONS:
-    raise ValueError('Missing TODOIST_INSTRUCTIONS. Please set it in the .env file.')
 
 if not VOICE:
     raise ValueError('Missing VOICE. Please set it in the .env file.')
@@ -328,9 +324,6 @@ async def send_initial_conversation_item(openai_ws):
 
 async def initialize_session(openai_ws):
     """Control initial session with OpenAI."""
-    # Combine instructions: general assistant behavior + Todoist-specific tool usage
-    combined_instructions = f"{ASSISTANT_INSTRUCTIONS}\n\n{TODOIST_INSTRUCTIONS}"
-
     session_config = {
         "type": "realtime",
         "model": "gpt-realtime",
@@ -345,14 +338,14 @@ async def initialize_session(openai_ws):
                 "voice": VOICE
             }
         },
-        "instructions": combined_instructions,
+        "instructions": ASSISTANT_INSTRUCTIONS,
         "tools": [
             {
                 "type": "mcp",
-                "server_label": "todoist",
-                "server_url": TODOIST_MCP_URL,
+                "server_label": "zapier",
+                "server_url": ZAPIER_MCP_URL,
                 "headers": {
-                    "Authorization": f"Bearer {TODOIST_MCP_PASSWORD}"
+                    "Authorization": f"Bearer {ZAPIER_MCP_PASSWORD}"
                 },
                 "require_approval": "never"
             }
