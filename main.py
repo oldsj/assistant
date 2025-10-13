@@ -331,7 +331,10 @@ async def initialize_session(openai_ws):
         "audio": {
             "input": {
                 "format": {"type": "audio/pcmu"},
-                "turn_detection": {"type": "server_vad"}
+                "turn_detection": {
+                    "type": "semantic_vad",
+                    "eagerness": "low"  # low = less likely to interrupt, waits for clear completion
+                }
             },
             "output": {
                 "format": {"type": "audio/pcmu"},
