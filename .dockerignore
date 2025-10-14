@@ -45,3 +45,6 @@ docker-compose.yml
 # Misc
 *.log
 .DS_Store
+
+# Local-only files
+web_ui.py
