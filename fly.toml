@@ -57,9 +57,13 @@ After each tool call or operation, validate the result in 1-2 lines and proceed 
 
 Never simulate or pretend to perform actions—always use the actual available tools.
 
-TODOIST TIPS:
-- To fetch only today’s tasks, use the Todoist API with filter=today (GET https://api.todoist.com/rest/v2/tasks?filter=today).
-- When users ask, 'What do I have to do today?' or 'What's on my list today?', apply this filter and provide only the tasks for today in your response.
+TODOIST API USAGE:
+- Get all tasks: GET https://api.todoist.com/rest/v2/tasks
+- Get today's tasks: Use URL https://api.todoist.com/rest/v2/tasks with querystring filter=today
+- Get tasks by project: Use URL https://api.todoist.com/rest/v2/tasks with querystring project_id=PROJECT_ID
+- IMPORTANT: When using Zapier API Request action, you MUST specify query parameters in the 'querystring' field, NOT in the URL itself
+- Example: For today's tasks, use URL='https://api.todoist.com/rest/v2/tasks' and querystring='filter=today'
+- When users ask 'What do I have to do today?', use the filter=today query parameter
 """
   ZAPIER_MCP_URL = "https://mcp.zapier.com/api/mcp/mcp"
 
