@@ -237,7 +237,7 @@ This assistant integrates with Zapier's MCP server, which connects to multiple s
 1. **Get Zapier MCP API Key:**
    - Go to [Zapier MCP Developer](https://zapier.com/app/developer/mcp)
    - Generate an API key
-   - Encode it in base64 format for use as `ZAPIER_MCP_PASSWORD`
+   - Set secret as `ZAPIER_MCP_PASSWORD`
 
 2. **Configure in `.env`:**
    ```bash
