@@ -3,7 +3,7 @@ services:
     build: .
     container_name: voice-assistant
     ports:
-      - "5050:5050"
+      - 5050:5050
     env_file:
       - .env
     restart: unless-stopped

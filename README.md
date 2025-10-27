@@ -11,6 +11,7 @@ This is a personal AI assistant you can call like a regular phone contact. I use
 The UX is simple: add a contact called "🤖 Assistant" with the Twilio phone number, add it as a complication on your watch face, and tap it (or tell Siri "call Assistant") whenever you need something.
 
 **Key features:**
+
 - Natural voice conversations with GPT-5 Realtime
 - Task management through Todoist (create, edit, prioritize tasks by voice)
 - Email search via Gmail integration
@@ -19,6 +20,7 @@ The UX is simple: add a contact called "🤖 Assistant" with the Twilio phone nu
 - Extremely cheap to run (Fly.io free tier + pay-per-minute Twilio)
 
 **What makes it useful:**
+
 - Your watch face updates in real-time when you create/modify tasks
 - Natural interruption handling (you can cut it off mid-sentence)
 - Semantic VAD for background noise filtering
@@ -55,6 +57,7 @@ flowchart LR
 ```
 
 **The stack:**
+
 - **Twilio** handles inbound calls via WebSockets
 - **FastAPI server** (this repo) relays audio between Twilio and OpenAI
 - **GPT-5 Realtime** for natural voice conversations
@@ -66,36 +69,42 @@ flowchart LR
 ## Dev Quick Start
 
 **1. Prerequisites:**
+
 - Python 3.13+ and [uv](https://docs.astral.sh/uv/)
 - Twilio account with a phone number
 - OpenAI API key
 - Zapier MCP key ([configure here](https://mcp.zapier.com))
 
 **2. Configure environment:**
+
 ```bash
 cp .env.example .env
 # Edit .env with your API keys
 ```
 
 **3. Start local server:**
+
 ```bash
 make dev
 # or: uv run python main.py
 ```
 
 **4. Expose to internet (for Twilio webhooks):**
+
 ```bash
 make tunnel-quick
 # Copy the https://xyz.trycloudflare.com URL
 ```
 
 **5. Configure Twilio:**
+
 - Deploy the allowlist function from `twilio/allowlist-function.js` (see detailed setup below)
 - Point your Twilio number to the function
 - Set `WEBHOOK_URL` in the function to your tunnel URL + `/incoming-call`
 - Add your phone number to `ALLOWED_NUMBERS`
 
 **6. Call it:**
+
 - Dial your Twilio number
 - Start talking to your assistant!
 
@@ -141,16 +150,19 @@ sequenceDiagram
 This application uses **three layers of security** to protect against unauthorized access:
 
 ### Layer 1: Phone Number Allowlist (Twilio Function)
+
 - Runs on Twilio's infrastructure before reaching your server
 - Only approved phone numbers can proceed
 - See `twilio/allowlist-function.js` for implementation
 
 ### Layer 2: Twilio Signature Validation
+
 - Validates all webhook requests from Twilio
 - Ensures requests are authentic and haven't been tampered with
 - Uses HMAC-SHA1 with your `TWILIO_AUTH_TOKEN`
 
 ### Layer 3: WebSocket Token Authentication
+
 - Single-use tokens generated for each call
 - 60-second expiration window
 - Prevents unauthorized WebSocket connections
@@ -166,6 +178,7 @@ cp .env.example .env
 ```
 
 Edit `.env` and configure:
+
 - `OPENAI_API_KEY` - Your OpenAI API key
 - `TWILIO_AUTH_TOKEN` - Your Twilio Auth Token (found in [Twilio Console](https://console.twilio.com/))
 - `ZAPIER_MCP_URL` - Zapier MCP server URL (default: `https://mcp.zapier.com/api/mcp/mcp`)
@@ -180,12 +193,15 @@ Note: `WEBHOOK_URL` and `ALLOWED_NUMBERS` are only used in the Twilio Function (
 ### 2. Start cloudflared tunnel
 
 **Option A: Quick temporary tunnel** (random URL):
+
 ```bash
 make tunnel-quick
 ```
+
 Copy the forwarding URL (e.g., `https://xyz.trycloudflare.com`).
 
 **Option B: Named tunnel with stable domain** (one-time setup):
+
 ```bash
 # 1. Authenticate with Cloudflare
 cloudflared tunnel login
@@ -205,6 +221,7 @@ make tunnel
 ### 3. Deploy Twilio Allowlist Function
 
 **Create the Function:**
+
 1. In [Twilio Console](https://console.twilio.com/), go to **Functions & Assets** > **Services**
 2. Create a new Service (e.g., "voice-assistant-auth")
 3. Add a new Function with path `/incoming-call`
@@ -215,6 +232,7 @@ make tunnel
 6. Deploy the service
 
 **Configure Your Phone Number:**
+
 1. Navigate to **Phone Numbers** > **Manage** > **Active Numbers**
 2. Select your number
 3. Set **A call comes in** to **Function**: Select your deployed function
@@ -225,11 +243,13 @@ make tunnel
 ### Docker
 
 **Build and run locally:**
+
 ```bash
 docker compose up
 ```
 
 **Run with cloudflared tunnel (dev profile):**
+
 ```bash
 docker compose --profile dev up
 ```
@@ -237,6 +257,7 @@ docker compose --profile dev up
 ### Fly.io
 
 **Initial setup:**
+
 ```bash
 # Install flyctl
 brew install flyctl
@@ -251,6 +272,7 @@ fly launch --no-deploy
 **Configure environment:**
 
 Set secrets:
+
 ```bash
 fly secrets set OPENAI_API_KEY=your_key_here
 fly secrets set TWILIO_AUTH_TOKEN=your_token_here
@@ -260,11 +282,13 @@ fly secrets set ZAPIER_MCP_PASSWORD=your_zapier_api_key_base64
 Non-secret environment variables (VOICE, TEMPERATURE, ASSISTANT_INSTRUCTIONS, ZAPIER_MCP_URL) are configured in `fly.toml`.
 
 **Deploy:**
+
 ```bash
 fly deploy
 ```
 
 **Get your app URL:**
+
 ```bash
 fly status
 ```
@@ -274,6 +298,7 @@ Your webhook URL will be: `https://[your-app-name].fly.dev/incoming-call`
 Use this URL as your `WEBHOOK_URL` in the Twilio Function.
 
 **Scale to single machine (optional):**
+
 ```bash
 fly scale count 1 -y
 ```
@@ -281,6 +306,7 @@ fly scale count 1 -y
 **Custom domain setup (optional):**
 
 1. Get your Fly IP addresses:
+
 ```bash
 fly ips list
 ```
@@ -290,11 +316,13 @@ fly ips list
    - **AAAA record**: Point to the IPv6 address shown in `fly ips list`
 
 3. Add the custom domain to Fly (triggers Let's Encrypt certificate):
+
 ```bash
 fly certs add your-domain.com
 ```
 
 4. Check certificate status:
+
 ```bash
 fly certs show your-domain.com
 ```
@@ -303,6 +331,7 @@ fly certs show your-domain.com
    - Example: `https://your-domain.com/incoming-call`
 
 **View logs:**
+
 ```bash
 fly logs
 ```
@@ -310,6 +339,7 @@ fly logs
 ## MCP Integration (Zapier)
 
 This assistant integrates with Zapier's MCP server, which connects to multiple services:
+
 - **Todoist**: Task management and reminders
 - **Gmail**: Email search
 
@@ -321,6 +351,7 @@ This assistant integrates with Zapier's MCP server, which connects to multiple s
    - Set secret as `ZAPIER_MCP_PASSWORD`
 
 2. **Configure in `.env`:**
+
    ```bash
    ZAPIER_MCP_URL=https://mcp.zapier.com/api/mcp/mcp
    ZAPIER_MCP_PASSWORD=your_zapier_api_key_base64
@@ -344,19 +375,22 @@ This assistant integrates with Zapier's MCP server, which connects to multiple s
 Once configured, you can use natural language for:
 
 **Todoist Tasks:**
+
 - "Add buy milk to my todo list"
 - "What tasks do I have today?"
 - "Mark task as complete"
 - "What's due tomorrow?"
 
 **Gmail Search:**
+
 - "Search my email for messages about project updates"
 - "Find emails from John sent this week"
 
 ### Todoist API Tips
 
 When fetching today's tasks, the assistant uses the Todoist API with the `filter=today` parameter:
-```
+
+```http
 GET https://api.todoist.com/rest/v2/tasks?filter=today
 ```
 

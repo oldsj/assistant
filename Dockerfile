@@ -9,7 +9,7 @@ ENV PYTHONUNBUFFERED=1 \
     UV_SYSTEM_PYTHON=1
 
 # Install uv
-RUN pip install --no-cache-dir uv
+RUN pip install --no-cache-dir uv==0.9.5
 
 # Create non-root user
 RUN groupadd -r assistant && useradd -r -g assistant assistant
@@ -24,6 +24,7 @@ COPY pyproject.toml uv.lock main.py ./
 RUN uv pip install --system --no-cache .
 
 # Change ownership to non-root user
+# trunk-ignore(hadolint/DL3059): Separate RUN for better layer caching
 RUN chown -R assistant:assistant /app
 
 # Switch to non-root user
