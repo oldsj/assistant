@@ -24,6 +24,7 @@ COPY pyproject.toml uv.lock main.py ./
 RUN uv pip install --system --no-cache .
 
 # Change ownership to non-root user
+# trunk-ignore(hadolint/DL3059): Separate RUN for better layer caching
 RUN chown -R assistant:assistant /app
 
 # Switch to non-root user

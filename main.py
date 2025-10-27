@@ -399,4 +399,5 @@ async def initialize_session(openai_ws):
 if __name__ == "__main__":
     import uvicorn
 
+    # trunk-ignore(bandit/B104): Binding to 0.0.0.0 required for containerized deployment
     uvicorn.run(app, host="0.0.0.0", port=PORT)
