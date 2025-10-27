@@ -1,15 +1,114 @@
 # Voice Assistant
 
-Personal voice assistant using Twilio Voice and OpenAI's Realtime API for phone-based AI conversations.
+A voice assistant you can call from your phone or watch that connects to GPT-5 Realtime, Todoist, Gmail, and GitHub. Built with Twilio, OpenAI's Realtime API, and Zapier MCP integration.
 
-## Architecture
+📖 **Read the full story:** [Building a (useful) voice assistant I can call from my watch](https://blog.jamesolds.me/post/voice-assistant-watch/)
+
+## What is this?
+
+This is a personal AI assistant you can call like a regular phone contact. I use it to manage tasks, check email, and interact with GitHub - all hands-free from my Apple Watch.
+
+The UX is simple: add a contact called "🤖 Assistant" with the Twilio phone number, add it as a complication on your watch face, and tap it (or tell Siri "call Assistant") whenever you need something.
+
+**Key features:**
+- Natural voice conversations with GPT-5 Realtime
+- Task management through Todoist (create, edit, prioritize tasks by voice)
+- Email search via Gmail integration
+- GitHub repository queries
+- Works from any phone or watch that can make calls
+- Extremely cheap to run (Fly.io free tier + pay-per-minute Twilio)
+
+**What makes it useful:**
+- Your watch face updates in real-time when you create/modify tasks
+- Natural interruption handling (you can cut it off mid-sentence)
+- Semantic VAD for background noise filtering
+- Easy to extend with new services via Zapier MCP
+
+## How it works
+
+```mermaid
+flowchart LR
+    A[📱 Phone/Watch]
+    B[📞 Twilio]
+    C[🤖 FastAPI Server]
+    D[🧠 GPT-5 Realtime]
+    E[🔌 Zapier MCP]
+    F[✅ Todoist]
+    G[📧 Gmail]
+    H[💻 GitHub]
+
+    A -->|Call| B
+    B <-->|WebSocket| C
+    C <-->|Voice| D
+    D -->|MCP| E
+    E --> F & G & H
+    F -.->|Updates| A
+
+    style A fill:#34495e,stroke:#2c3e50,color:#fff
+    style B fill:#9b59b6,stroke:#8e44ad,color:#fff
+    style C fill:#3498db,stroke:#2980b9,color:#fff
+    style D fill:#e74c3c,stroke:#c0392b,color:#fff
+    style E fill:#f39c12,stroke:#d68910,color:#fff
+    style F fill:#2ecc71,stroke:#27ae60,color:#fff
+    style G fill:#2ecc71,stroke:#27ae60,color:#fff
+    style H fill:#2ecc71,stroke:#27ae60,color:#fff
+```
+
+**The stack:**
+- **Twilio** handles inbound calls via WebSockets
+- **FastAPI server** (this repo) relays audio between Twilio and OpenAI
+- **GPT-5 Realtime** for natural voice conversations
+- **Zapier MCP** for easy integration with multiple services
+- **Fly.io** for hosting (or run locally with cloudflared)
+
+**Authentication:** Three-layer security ensures only authorized callers can access the assistant (see Security section below).
+
+## Dev Quick Start
+
+**1. Prerequisites:**
+- Python 3.13+ and [uv](https://docs.astral.sh/uv/)
+- Twilio account with a phone number
+- OpenAI API key
+- Zapier MCP key ([configure here](https://mcp.zapier.com))
+
+**2. Configure environment:**
+```bash
+cp .env.example .env
+# Edit .env with your API keys
+```
+
+**3. Start local server:**
+```bash
+make dev
+# or: uv run python main.py
+```
+
+**4. Expose to internet (for Twilio webhooks):**
+```bash
+make tunnel-quick
+# Copy the https://xyz.trycloudflare.com URL
+```
+
+**5. Configure Twilio:**
+- Deploy the allowlist function from `twilio/allowlist-function.js` (see detailed setup below)
+- Point your Twilio number to the function
+- Set `WEBHOOK_URL` in the function to your tunnel URL + `/incoming-call`
+- Add your phone number to `ALLOWED_NUMBERS`
+
+**6. Call it:**
+- Dial your Twilio number
+- Start talking to your assistant!
+
+## Detailed Architecture
+
+Here's the complete call flow with all security layers:
 
 ```mermaid
 sequenceDiagram
     participant Caller
     participant Twilio
     participant TwilioFunction as Twilio Function<br/>(Allowlist)
-    participant Assistant as your-tunnel-name.trycloudflare.com
+    participant Assistant as FastAPI Server
     participant OpenAI as OpenAI Realtime API
 
     Caller->>Twilio: Dials phone number
@@ -56,17 +155,9 @@ This application uses **three layers of security** to protect against unauthoriz
 - 60-second expiration window
 - Prevents unauthorized WebSocket connections
 
-## Prerequisites
+## Detailed Configuration
 
-- Python 3.13+
-- [uv](https://docs.astral.sh/uv/) for dependency management
-- Twilio account with a voice-capable phone number
-- OpenAI API key with Realtime API access
-- cloudflared for local development tunneling
-- Docker (optional, for containerized deployment)
-- [Fly.io account](https://fly.io) (optional, for production deployment)
-
-## Setup
+This section provides in-depth setup instructions. For a quick start, see the [Dev Quick Start](#dev-quick-start) section above.
 
 ### 1. Configure environment
 
@@ -128,16 +219,6 @@ make tunnel
 2. Select your number
 3. Set **A call comes in** to **Function**: Select your deployed function
 4. Save
-
-## Run
-
-### Local Development
-
-```bash
-uv run python main.py
-```
-
-Call your Twilio number to talk with the assistant.
 
 ## Deployment
 
@@ -280,11 +361,3 @@ GET https://api.todoist.com/rest/v2/tasks?filter=today
 ```
 
 This ensures accurate results when users ask "what do I have to do today?" or similar queries.
-
-## Features
-
-- Real-time voice conversation with OpenAI
-- Natural interrupt handling and AI preemption
-- Bidirectional audio streaming between Twilio and OpenAI
-- Task management via Zapier MCP (Todoist integration)
-- Email search via Zapier MCP (Gmail integration)
