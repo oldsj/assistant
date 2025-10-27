@@ -182,7 +182,7 @@ Edit `.env` and configure:
 - `OPENAI_API_KEY` - Your OpenAI API key
 - `TWILIO_AUTH_TOKEN` - Your Twilio Auth Token (found in [Twilio Console](https://console.twilio.com/))
 - `ZAPIER_MCP_URL` - Zapier MCP server URL (default: `https://mcp.zapier.com/api/mcp/mcp`)
-- `ZAPIER_MCP_PASSWORD` - Zapier API key in base64 format (get from [Zapier MCP Developer](https://zapier.com/app/developer/mcp))
+- `ZAPIER_MCP_PASSWORD` - Zapier API key in base64 format (get from [Zapier MCP Developer](https://mcp.zapier.com))
 - `ASSISTANT_INSTRUCTIONS` - AI assistant personality, behavior, and tool usage instructions
 - `VOICE` - OpenAI voice name (e.g., `alloy`, `shimmer`, `nova`)
 - `PORT` - Server port (default: 5050)
@@ -346,7 +346,7 @@ This assistant integrates with Zapier's MCP server, which connects to multiple s
 ### Setup
 
 1. **Get Zapier MCP API Key:**
-   - Go to [Zapier MCP Developer](https://zapier.com/app/developer/mcp)
+   - Go to [Zapier MCP Developer](https://mcp.zapier.com)
    - Generate an API key
    - Set secret as `ZAPIER_MCP_PASSWORD`
 
