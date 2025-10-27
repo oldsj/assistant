@@ -29,7 +29,9 @@ exports.handler = (context, event, callback) => {
   // Get allowed numbers from environment variable
   // Set ALLOWED_NUMBERS in Twilio Function Environment Variables
   // Example: +15551234567,+15559876543,+15555551234
-  const allowList = (context.ALLOWED_NUMBERS || '').split(',').map(n => n.trim());
+  const allowList = (context.ALLOWED_NUMBERS || "")
+    .split(",")
+    .map((n) => n.trim());
 
   // Get webhook URL from environment variable
   // Set WEBHOOK_URL in Twilio Function Environment Variables
