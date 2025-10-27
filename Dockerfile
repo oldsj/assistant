@@ -9,7 +9,7 @@ ENV PYTHONUNBUFFERED=1 \
     UV_SYSTEM_PYTHON=1
 
 # Install uv
-RUN pip install --no-cache-dir uv==0.5.11
+RUN pip install --no-cache-dir uv==0.9.5
 
 # Create non-root user
 RUN groupadd -r assistant && useradd -r -g assistant assistant
